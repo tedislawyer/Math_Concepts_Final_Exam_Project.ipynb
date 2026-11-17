@@ -5,5 +5,5 @@ final project for softuni covering Page Rank and Markov Chains analysis.
 NumPy, NetworkX, matplotlib.
 ## Installation
 Инсталираm нужните библиотеки с pip.install
-license
-usage
+License
+Usage
