@@ -1,4 +1,185 @@
 {
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Final Exam Project: Mathematical Modeling and Computational Analysis of PageRank & Markov Chains\n",
+    "\n",
+    "**Author:** Теодора Пудева (tedislawyerr)  \n",
+    "**Course:** Math Concepts for Developers / SoftUni  \n",
+    "**Date:** November 2026  \n",
+    "\n",
+    "---\n",
+    "\n",
+    "## 1. Introduction & Problem Formulation\n",
+    "\n",
+    "### 1.1 Problem Significance and Real-World Context\n",
+    "In the modern era of information retrieval, ranking the importance of web pages, documents, or nodes in a massive network is a foundational problem. The **PageRank** algorithm, originally developed by Larry Page and Sergey Brin at Stanford University, revolutionized search engines by modeling web navigation as a random walk on a directed graph. \n",
+    "\n",
+    "The primary objective of this project is to bridge rigorous linear algebra and graph theory with practical Python implementation. Specifically, we examine how **Markov Chains**, **Stochastic Matrices**, and the **Power Iteration Method** (along with eigenvalue-eigenvector solutions) can be leveraged to compute the stationary distribution of a network representing web navigation or citation networks.\n",
+    "\n",
+    "### 1.2 Mathematical Foundations\n",
+    "Let $G = (V, E)$ be a directed graph where $V$ is the set of vertices (pages) and $E$ is the set of directed edges (links). \n",
+    "- Let $N = |V|$ be the total number of nodes.\n",
+    "- The adjacency structure can be represented by a transition probability matrix $M$, where $M_{ij} = \\frac{1}{L(j)}$ if there is a link from page $j$ to page $i$, and $L(j)$ is the out-degree of page $j$.\n",
+    "\n",
+    "To handle \"dead ends\" (nodes with no outgoing links) and \"spider traps\" (groups of nodes that loop indefinitely without linking outside), PageRank introduces a **teleportation damping factor** $d$ (typically set to $0.85$). The Google Matrix $A$ is defined as:\n",
+    "\n",
+    "$$A = d M + \\frac{1-d}{N} E$$\n",
+    "\n",
+    "where $E$ is an $N \\times N$ matrix of all ones. The stationary probability vector $\\pi$ satisfies the eigenvalue equation:\n",
+    "\n",
+    "$$\\pi = A \\pi$$\n",
+    "\n",
+    "This can be solved iteratively via the **Power Iteration Method**:\n",
+    "\n",
+    "$$\\pi^{(t+1)} = A \\pi^{(t)}$$\n",
+    "\n",
+    "until convergence $\\|\\pi^{(t+1)} - \\pi^{(t)}\\| < \\epsilon$."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Methodology & Theoretical Concepts\n",
+    "\n",
+    "### Damping Factor and Stochastic Matrices\n",
+    "The damping factor $d$ represents the probability that a web surfer continues clicking on random hyperlinks rather than jumping (\"teleporting\") to a completely random page in the network. A transition matrix is column-stochastic when all its columns sum to 1, ensuring that probability mass is conserved during state transitions in a Markov chain. By blending the adjacency transition probabilities with a uniform teleportation matrix scaled by $(1-d)$, we guarantee that the resulting Google Matrix is irreducible and primitive, satisfying the conditions of the Perron-Frobenius theorem for a unique stationary distribution."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import networkx as nx\n",
+    "import matplotlib.pyplot as plt\n",
+    "\n",
+    "class PageRankAnalyzer:\n",
+    "    def __init__(self, damping_factor=0.85, max_iter=100, tol=1e-6):\n",
+    "        self.d = damping_factor\n",
+    "        self.max_iter = max_iter\n",
+    "        self.tol = tol\n",
+    "\n",
+    "    def compute_power_iteration(self, transition_matrix):\n",
+    "        N = transition_matrix.shape[0]\n",
+    "        M = transition_matrix.copy()\n",
+    "        dangling_nodes = np.where(M.sum(axis=0) == 0)[0]\n",
+    "        \n",
+    "        pi = np.ones(N) / N\n",
+    "        history = [pi.copy()]\n",
+    "        iterations_taken = 0\n",
+    "        \n",
+    "        for iteration in range(self.max_iter):\n",
+    "            iterations_taken = iteration + 1\n",
+    "            pi_next = self.d * M.dot(pi)\n",
+    "            dangling_sum = np.sum(pi[dangling_nodes])\n",
+    "            pi_next += self.d * dangling_sum * (np.ones(N) / N) + (1 - self.d) * (np.ones(N) / N)\n",
+    "            \n",
+    "            pi_next /= np.linalg.norm(pi_next, 1)\n",
+    "            history.append(pi_next.copy())\n",
+    "            \n",
+    "            if np.linalg.norm(pi_next - pi, ord=1) < self.tol:\n",
+    "                break\n",
+    "            pi = pi_next\n",
+    "            \n",
+    "        return pi, history, iterations_taken\n",
+    "\n",
+    "# Test with a connected directed random graph\n",
+    "np.random.seed(42)\n",
+    "G_test = nx.erdos_renyi_graph(n=10, p=0.4, directed=True, seed=42)\n",
+    "while len(list(nx.isolates(G_test))) > 0:\n",
+    "    G_test = nx.erdos_renyi_graph(n=10, p=0.5, directed=True, seed=42)\n",
+    "\n",
+    "adj_matrix = nx.to_numpy_array(G_test, nodelist=sorted(G_test.nodes()))\n",
+    "col_stochastic_matrix = adj_matrix.T\n",
+    "col_sums = col_stochastic_matrix.sum(axis=0)\n",
+    "col_sums[col_sums == 0] = 1\n",
+    "col_stochastic_matrix = col_stochastic_matrix / col_sums\n",
+    "\n",
+    "pr_solver = PageRankAnalyzer(damping_factor=0.85)\n",
+    "stationary_dist, convergence_history, iters = pr_solver.compute_power_iteration(col_stochastic_matrix)\n",
+    "print(f\"Computed PageRank Stationary Distribution in {iters} iterations:\", np.round(stationary_dist, 4))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Experiments, Results & Damping Factor Comparison\n",
+    "\n",
+    "### Experiment: Impact of Damping Factor ($d$) on Convergence Rate\n",
+    "We test the algorithm with three different damping factors: $d = 0.5$, $d = 0.85$, and $d = 0.99$ to observe how the rate of convergence and distribution sensitivity change."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "damping_factors = [0.5, 0.85, 0.99]\n",
+    "plt.figure(figsize=(10, 5))\n",
+    "\n",
+    "for d_val in damping_factors:\n",
+    "    solver = PageRankAnalyzer(damping_factor=d_val)\n",
+    "    _, hist, num_iters = solver.compute_power_iteration(col_stochastic_matrix)\n",
+    "    # Track norm difference per iteration\n",
+    "    diffs = [np.linalg.norm(hist[i] - hist[i-1], ord=1) for i in range(1, len(hist))]\n",
+    "    plt.plot(diffs, label=f'd = {d_val} ({num_iters} iters)')\n",
+    "\n",
+    "plt.yscale('log')\n",
+    "plt.title('Convergence Rate (L1 Difference) for Different Damping Factors')\n",
+    "plt.xlabel('Iteration')\n",
+    "plt.ylabel('L1 Difference (Log Scale)')\n",
+    "plt.legend()\n",
+    "plt.grid(True, linestyle='--', alpha=0.5)\n",
+    "plt.tight_layout()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 4. Conclusion & Verification\n",
+    "\n",
+    "We verified our custom implementation against NetworkX's reference implementation to ensure correctness."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "nx_pr = nx.pagerank(G_test, alpha=0.85)\n",
+    "nx_pr_vector = np.array([nx_pr[node] for node in sorted(G_test.nodes())])\n",
+    "print(\"Max Absolute Difference with NetworkX:\", np.max(np.abs(stationary_dist - nx_pr_vector)))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## References\n",
+    "- Page, L., Brin, S., Motwani, R., & Winograd, T. (1999). The PageRank Citation Ranking: Bringing Order to the Web. Stanford InfoLab.\n",
+    "- NetworkX Documentation: `networkx.pagerank` - https://networkx.org/"
+   ]
+  }
+ ],
+ "metadata": {
+  "language_info": {
+   "name": "python"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}{
   "cells": [
     {
       "cell_type": "markdown",
