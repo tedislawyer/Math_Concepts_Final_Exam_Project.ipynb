@@ -3,5 +3,7 @@ final project for softuni covering Page Rank and Markov Chains analysis.
 Целта на проекта е да се анализира важността на уеб страници чрез Page Rank  и да се моделират преходи между състояния с Марковски  вериги.
 ## Technologies Used
 NumPy, NetworkX, matplotlib.
-##Installation
+## Installation
 Инсталираm нужните библиотеки с pip.install
+license
+usage
