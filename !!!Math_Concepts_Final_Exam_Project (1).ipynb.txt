@@ -6,7 +6,7 @@
    "source": [
     "# Final Exam Project: Mathematical Modeling and Computational Analysis of PageRank & Markov Chains\n",
     "\n",
-    "**Author:** Теодора Пудева (tedislawyerr)  \n",
+    "**Author:** Teodora Pudeva (tedislawyerr)  \n",
     "**Course:** Math Concepts for Developers / SoftUni  \n",
     "**Date:** November 2026  \n",
     "\n",
