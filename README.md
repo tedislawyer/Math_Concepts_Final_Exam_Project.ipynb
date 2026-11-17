@@ -7,3 +7,5 @@ NumPy, NetworkX, matplotlib.
 Инсталираm нужните библиотеки с pip.install
 License
 Usage
+## License
+MIT
