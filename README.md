@@ -1,1 +1,1 @@
-# Math-Concepts-Final-Exam-2026
+final project for softuni covering Page Rank and Markov Chains analysis
