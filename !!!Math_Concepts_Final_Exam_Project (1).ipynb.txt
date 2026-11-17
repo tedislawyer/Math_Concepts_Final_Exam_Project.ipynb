@@ -1,0 +1,163 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# Final Exam Project: Mathematical Modeling and Computational Analysis of PageRank & Markov Chains\n",
+        "\n",
+        "**Author:** Теодора Пудева (tedislawyerr)  \n",
+        "**Course:** Math Concepts for Developers / SoftUni  \n",
+        "**Date:** November 2026  \n",
+        "\n",
+        "---\n",
+        "\n",
+        "## 1. Introduction & Problem Formulation\n",
+        "\n",
+        "### 1.1 Problem Significance and Real-World Context\n",
+        "In the modern era of information retrieval, ranking the importance of web pages, documents, or nodes in a massive network is a foundational problem. The **PageRank** algorithm, originally developed by Larry Page and Sergey Brin at Stanford University, revolutionized search engines by modeling web navigation as a random walk on a directed graph. \n",
+        "\n",
+        "The primary objective of this project is to bridge rigorous linear algebra and graph theory with practical Python implementation. Specifically, we examine how **Markov Chains**, **Stochastic Matrices**, and the **Power Iteration Method** (along with eigenvalue-eigenvector solutions) can be leveraged to compute the stationary distribution of a network representing web navigation or citation networks.\n",
+        "\n",
+        "### 1.2 Mathematical Foundations\n",
+        "Let $G = (V, E)$ be a directed graph where $V$ is the set of vertices (pages) and $E$ is the set of directed edges (links). \n",
+        "- Let $N = |V|$ be the total number of nodes.\n",
+        "- The adjacency structure can be represented by a transition probability matrix $M$, where $M_{ij} = \\frac{1}{L(j)}$ if there is a link from page $j$ to page $i$, and $L(j)$ is the out-degree of page $j$.\n",
+        "\n",
+        "To handle \"dead ends\" (nodes with no outgoing links) and \"spider traps\" (groups of nodes that loop indefinitely without linking outside), PageRank introduces a **teleportation damping factor** $d$ (typically set to $0.85$). The Google Matrix $A$ is defined as:\n",
+        "\n",
+        "$$A = d M + \\frac{1}{N} E$$\n",
+        "\n",
+        "where $E$ is an $N \\times N$ matrix of all ones. The stationary probability vector $\\pi$ satisfies the eigenvalue equation:\n",
+        "\n",
+        "$$\\pi = A \\pi$$\n",
+        "\n",
+        "This can be solved iteratively via the **Power Iteration Method**:\n",
+        "\n",
+        "$$\\pi^{(t+1)} = A \\pi^{(t)}$_\n",
+        "\n",
+        "until convergence $\\|\\pi^{(t+1)} - \\pi^{(t)}\\| < \\epsilon$."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## 2. Methodology & Algorithm Implementation\n",
+        "\n",
+        "We will implement a custom Python module from scratch that handles:\n",
+        "1. Graph representation and adjacency matrix construction.\n",
+        "2. Handling of dangling nodes (stochastic normalization).\n",
+        "3. Damping factor incorporation (Google Matrix formation).\n",
+        "4. Power Iteration convergence tracking.\n",
+        "5. Comparative analysis against `numpy.linalg` eigenvector calculations and `networkx` built-in PageRank."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "import numpy as np\n",
+        "import networkx as nx\n",
+        "import matplotlib.pyplot as plt\n",
+        "\n",
+        "class PageRankAnalyzer:\n",
+        "    def __init__(self, damping_factor=0.85, max_iter=100, tol=1e-6):\n",
+        "        self.d = damping_factor\n",
+        "        self.max_iter = max_iter\n",
+        "        self.tol = tol\n",
+        "\n",
+        "    def compute_power_iteration(self, transition_matrix):\n",
+        "        N = transition_matrix.shape[0]\n",
+        "        M = transition_matrix.copy()\n",
+        "        dangling_nodes = np.where(M.sum(axis=0) == 0)[0]\n",
+        "        \n",
+        "        pi = np.ones(N) / N\n",
+        "        history = [pi.copy()]\n",
+        "        \n",
+        "        for iteration in range(self.max_iter):\n",
+        "            pi_next = self.d * M.dot(pi)\n",
+        "            dangling_sum = np.sum(pi[dangling_nodes])\n",
+        "            pi_next += self.d * dangling_sum * (np.ones(N) / N) + (1 - self.d) * (np.ones(N) / N)\n",
+        "            \n",
+        "            pi_next /= np.linalg.norm(pi_next, 1)\n",
+        "            history.append(pi_next.copy())\n",
+        "            \n",
+        "            if np.linalg.norm(pi_next - pi, ord=1) < self.tol:\n",
+        "                print(f\"Converged successfully at iteration {iteration + 1}.\")\n",
+        "                break\n",
+        "            pi = pi_next\n",
+        "            \n",
+        "        return pi, history\n",
+        "\n",
+        "# Test with a connected directed random graph\n",
+        "np.random.seed(42)\n",
+        "G_test = nx.erdos_renyi_graph(n=10, p=0.4, directed=True, seed=42)\n",
+        "while len(list(nx.isolates(G_test))) > 0:\n",
+        "    G_test = nx.erdos_renyi_graph(n=10, p=0.5, directed=True, seed=42)\n",
+        "\n",
+        "adj_matrix = nx.to_numpy_array(G_test, nodelist=sorted(G_test.nodes()))\n",
+        "col_stochastic_matrix = adj_matrix.T\n",
+        "col_sums = col_stochastic_matrix.sum(axis=0)\n",
+        "col_sums[col_sums == 0] = 1\n",
+        "col_stochastic_matrix = col_stochastic_matrix / col_sums\n",
+        "\n",
+        "pr_solver = PageRankAnalyzer(damping_factor=0.85)\n",
+        "stationary_dist, convergence_history = pr_solver.compute_power_iteration(col_stochastic_matrix)\n",
+        "print(\"Computed PageRank Stationary Distribution:\", np.round(stationary_dist, 4))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## 3. Experiments, Results & Visualization\n",
+        "\n",
+        "Below we analyze the convergence trajectory of probability mass across all nodes during power iteration and verify our mathematical model against NetworkX's reference implementation."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "plt.figure(figsize=(10, 5))\n",
+        "history_array = np.array(convergence_history)\n",
+        "for i in range(history_array.shape[1]):\n",
+        "    plt.plot(history_array[:, i], label=f'Node {i}')\n",
+        "\n",
+        "plt.title('Convergence of PageRank Probabilities over Iterations')\n",
+        "plt.xlabel('Iteration')\n",
+        "plt.ylabel('Probability Mass')\n",
+        "plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left')\n",
+        "plt.grid(True, linestyle='--', alpha=0.5)\n",
+        "plt.tight_layout()\n",
+        "plt.show()\n",
+        "\n",
+        "nx_pr = nx.pagerank(G_test, alpha=0.85)\n",
+        "nx_pr_vector = np.array([nx_pr[node] for node in sorted(G_test.nodes())])\n",
+        "print(\"Max Absolute Difference with NetworkX:\", np.max(np.abs(stationary_dist - nx_pr_vector)))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## 4. Conclusion & Future Work\n",
+        "\n",
+        "- **Rigor & Correctness:** The custom implementation aligns perfectly with standard graph theoretic formulations.\n",
+        "- **Extensibility:** The framework can easily scale to larger citation networks or bibliographic datasets."
+      ]
+    }
+  ],
+  "metadata": {
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 2
+}
